@@ -1,0 +1,7 @@
+Ping_Enable=n<E>
+Ping_Timeout=6000<E>
+Get_Timeout=7000<E>
+Set_Timeout=7000<E>
+UsePCTime=n<E>
+ConnectLimit=6<E>
+

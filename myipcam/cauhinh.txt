@@ -1,0 +1,12 @@
+﻿1                    Độ_lệch_tâm_X
+2                    Độ_lệch_tâm_Y
+500                  Độ_rộng_bia(mm)
+499                  Độ_rộng_bia(pixel)
+483334569            Mã_kiểm_tra
+2042                 Chu_vi
+4                    Số_phát_bắn
+5                    Loại_súng
+10                   T.gian_chỉnh_súng
+3                    Nguồn_ảnh_vào(2-Camera,3-Test)
+40                   T.gian_làm_tươi_ảnh
+d:\temp\            
