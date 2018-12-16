@@ -613,8 +613,8 @@ int CmyipcamDlg::readConfig()
 	{
 		cs_CoDan = 1.0;
 	}
-	cs_CON_LEN_MAX = cs_ContourLen + cs_ContourLenRange;
-	cs_CON_LEN_MIN = cs_ContourLen - cs_ContourLenRange;
+	cs_con_len_max = cs_ContourLen + cs_ContourLenRange;
+	cs_con_len_min = cs_ContourLen - cs_ContourLenRange;
 	cs_BanKinh = (int)(cs_DoRongBia_ps*0.49);
 	
 	cs_saiso = (int)((cs_active_code - cs_seed_code)%100000);
@@ -686,6 +686,30 @@ void CmyipcamDlg::OnBnClickedButtonCsCfgSave()
 {
 	// TODO: Add your control notification handler code here
 }
+
+/* capture the first image  */
+int CmyipcamDlg::captureImage(std::string strName, int scType, IplImage *img )
+{
+	if (scType == 2)	// ip cam
+	{
+		if (HOEM_Play_SnapShot_BMP(0, (char*)strName.c_str(), strName.length()) == PLAY_SNAPSHOT_SUCCESS)
+		{
+			img = cvLoadImage((char*)strName.c_str(), CV_LOAD_IMAGE_COLOR);
+		}
+	}
+	else if (scType == 3) // test images
+	{
+		cvReleaseImage(&img);
+		img = cvCreateImage(cvGetSize(img_video_test),
+			img_video_test->depth,
+			img_video_test->nChannels);
+		cvCopy(img_video_test, img, 0);
+		cvShowImage("captured image", img);
+	}
+
+	return 0;
+}
+
 
 /* capture the first image  */
 int CmyipcamDlg::captureImage_F()
@@ -984,17 +1008,13 @@ void CmyipcamDlg::OnBnClickedButtonCsStart()
 	if (cs_scType == 2)	// ip cam
 	{
 		HOEM_Play_Play(0);
-		// capture the first image for comparison
-		iRet = captureImage_F();
+		SetTimer(TIMER_CAPTURE_FIRST_IMG, 100, 0); // wait for awhile then capture the first image 
 	}
 	else if (cs_scType == 3) // test images
 	{
 		SetTimer(TIMER_VIDEO_TEST, 1000, 0); // for test video (sequence of sample images)
 		SetTimer(TIMER_CAPTURE_FIRST_IMG, 1100, 0); // wait for awhile then capture the first image 
 	}
-	
-	
-	
 }
 
 
@@ -1002,12 +1022,14 @@ void CmyipcamDlg::OnBnClickedButtonCsStart()
 void CmyipcamDlg::OnBnClickedButtonCsEvaluation()
 {
 	int iRet;
+	int iKq = 0;
 	// stop video
 	HOEM_Play_Pause(0);
 	KillTimer(TIMER_VIDEO_TEST);
 	// capture image and show on Cstatic 
-	iRet = captureImage_E();
-	cs_preProcess();
+	iRet = captureImage("img_e.bmp",cs_scType,img_evaluate);
+	cs_preProcess(img_evaluate,img_evaluate_gray,img_evaluate_bw);
+	iKq = cs_resFind();
 	cs_mode = 0;
 }
 
@@ -1094,7 +1116,8 @@ int CmyipcamDlg::detectCenter(int xm1, int ym1, int xm2, int ym2, float zoom, Ip
 	}
 	return 1;
 }
-#ifdef VERSION_2
+
+
 // Tìm tâm điểm và độ rộng ảnh bia
 int CmyipcamDlg::conCenterPointAndWidth(CvSeq *mlgc, CvPoint *cvP, int *width)
 {
@@ -1123,7 +1146,6 @@ int CmyipcamDlg::conCenterPointAndWidth(CvSeq *mlgc, CvPoint *cvP, int *width)
 	*width = max - min;
 	return 1;
 }
-#elif VERSION_1
 
 // Tìm điểm trung tâm bằng cách tính tọa độ trung bình của tất cả các điểm biên
 int CmyipcamDlg::conCenterPoint(CvSeq *mlgc, CvPoint *cvP)
@@ -1143,7 +1165,6 @@ int CmyipcamDlg::conCenterPoint(CvSeq *mlgc, CvPoint *cvP)
 	return 1;
 }
 
-#endif // VERSION_2
 
 
 
@@ -1202,54 +1223,60 @@ void CmyipcamDlg::OnTimer(UINT_PTR nIDEvent)
 	}
 	else if (nIDEvent == TIMER_CAPTURE_FIRST_IMG) // wait for awhile then capture the first image 
 	{
-		int iRet = captureImage_F();
+		int iRet = captureImage("img_s.bmp", cs_scType, img_first);
+		cvShowImage("First image", img_first);
 		KillTimer(TIMER_CAPTURE_FIRST_IMG);
+		// find contour on first image
+		cs_preProcess(img_first, img_first_gray, img_first_bw);
+		cs_conFindBia(img_first_bw, &cs_contourBia0);
+#ifdef TEST_MODE
+		
+		//cvShowImage("Nguong1", img_first_gray);
+		cvShowImage("Anh 1 den trang", img_first_bw);
+#endif
 	}
 	CDialogEx::OnTimer(nIDEvent);
 }
 
-int CmyipcamDlg::cs_preProcess()
+int CmyipcamDlg::cs_preProcess(IplImage *img_color, IplImage *img_gray, IplImage *img_bw)
 {
-	cvReleaseImage(&img_first_preset);
-	img_first_preset = cvCreateImage(cvSize(img_first->width, img_first->height), 
+	cvReleaseImage(&img_gray);
+	cvReleaseImage(&img_bw);
+	img_gray = cvCreateImage(cvSize(img_color->width, img_color->height),
 		8,
 		1);
-	img_first_preset_S = cvCreateImage(cvSize(img_first->width, img_first->height),
+	img_bw = cvCreateImage(cvSize(img_color->width, img_color->height),
 		8,
 		1);
-	cvCvtColor(img_first, img_first_preset, CV_BGR2GRAY);
-	cvSmooth(img_first_preset, img_first_preset, CV_GAUSSIAN, 5, 5);
-	cvThreshold(img_first_preset, img_first_preset_S, 128, 255, CV_THRESH_OTSU);
-#ifdef TEST_MODE
-	cvShowImage("Nguong1", img_first_preset);
-	cvShowImage("Nguong2", img_first_preset_S);
-#endif
+	cvCvtColor(img_color, img_gray, CV_BGR2GRAY);
+	cvSmooth(img_gray, img_gray, CV_GAUSSIAN, 5, 5);
+	cvThreshold(img_gray, img_bw, cs_nguong_128, cs_nguong_255, CV_THRESH_OTSU);
 	return 0;
 }
 
 
-/*
 int CmyipcamDlg::cs_resFind()
 {
 	CvPoint cpKN, cpKO;
 	int index, i, j, k, h, Buoc, nCh;
 	double kq;
 
-	uchar *ptrKN = (uchar*)imgKN->imageData;
-	uchar *ptrKO = (uchar*)imgKO->imageData;
-	Buoc = imgKN->widthStep;
-	nCh = imgKN->nChannels;
+	uchar *ptrKN = (uchar*)img_evaluate->imageData;
+	uchar *ptrKO = (uchar*)img_first->imageData;
+	uchar *ptrTM = (uchar*)imgTM->imageData;
+	Buoc = img_evaluate->widthStep;
+	nCh = img_evaluate->nChannels;
 	// I. Xu ly anh imgKN //
 	//delete c;
-	if (conFind(imgKNS, &c) == 1)
+	if (cs_conFindBia(img_evaluate_bw, &cs_contourBia1) == 1)
 	{
-		// So sanh c va stContour
-		if ((stContour != NULL) && (c != NULL))
+		// So sanh cs_c0 va stContour
+		if ((cs_contourBia0 != NULL) && (cs_contourBia1 != NULL))
 		{
-			kq = cvMatchContours(stContour, c, CV_CONTOURS_MATCH_I1);
+			kq = cvMatchContours(cs_contourBia0, cs_contourBia1, CV_CONTOURS_MATCH_I1);
 			if (kq<0.01) // Neu 2 contour nay "giong nhau" -> Tim tam cua contour do
 			{
-				conCenterPoint(c, &cpKN);
+				conCenterPoint(cs_contourBia1, &cpKN);
 				//conCenterPoint(stContour,&cpKN);
 			}
 			else return -1;
@@ -1261,21 +1288,20 @@ int CmyipcamDlg::cs_resFind()
 	//cvDrawContours(imgKN,c,CV_RGB(0,0,255),CV_RGB(0,0,255),0,1,8);
 	//cvCircle(imgKN,cpKN,10,cvScalar(255,0,0),2);
 #ifdef TEST_MODE
-	cvShowImage("C1", imgKN);
+	cvShowImage("C1", img_evaluate);
 #endif
 	// II. Xu ly anh imgKO //
 	//cvCopyImage(imgKO,imgKOS);
 	//delete c;
-	if (conFind(imgKOS, &c) == 1)
+	if (cs_conFindBia(img_first_bw, &cs_contourBia1) == 1)
 	{
 		// So sanh c va stContour
-		if ((stContour != NULL) && (c != NULL))
+		if ((cs_contourBia0 != NULL) && (cs_contourBia1 != NULL))
 		{
-			kq = cvMatchContours(stContour, c, CV_CONTOURS_MATCH_I1);
+			kq = cvMatchContours(cs_contourBia0, cs_contourBia1, CV_CONTOURS_MATCH_I1);
 			if (kq<0.01) // Neu 2 contour nay "giong nhau" -> Tim tam cua contour do
 			{
-				conCenterPoint(c, &cpKO);
-				//conCenterPoint(stContour,&cpKO);
+				conCenterPoint(cs_contourBia1, &cpKO);
 			}
 			else return -1;
 		}
@@ -1285,7 +1311,7 @@ int CmyipcamDlg::cs_resFind()
 	//cvDrawContours(imgKO,c,CV_RGB(0,0,255),CV_RGB(0,0,255),0,1,8);
 	//cvCircle(imgKO,cpKO,10,cvScalar(255,0,0),2);
 #ifdef TEST_MODE
-	cvShowImage("C2", imgKO);
+	cvShowImage("C2", img_first_bw);
 #endif
 	// III. Tru anh:  imgTm = imgKN - imgKO  voi kich Thuoc 2*BanKinh voi tam o (yKO, xKO) 
 	cvZero(imgTM);							//III.1 Dua anh imgTM ve 0 truoc khi tinh toan
@@ -1295,20 +1321,20 @@ int CmyipcamDlg::cs_resFind()
 		cpKN.x = cpKO.x;
 		cpKN.y = cpKO.y;
 	}
-	for (k = -BanKinh; k <= BanKinh; k++)				//III.2 Tru anh
+	for (k = -cs_BanKinh; k <= cs_BanKinh; k++)				//III.2 Tru anh
 	{
-		for (h = -BanKinh; h <= BanKinh; h++)
+		for (h = -cs_BanKinh; h <= cs_BanKinh; h++)
 		{
 			i = cpKO.y + k;
 			j = cpKO.x + h;
-			if ((i >= 0) && (i<imgKO->height) && (j >= 0) && (j<imgKO->width))
+			if ((i >= 0) && (i<img_first->height) && (j >= 0) && (j<img_first->width))
 			{
 				index = (j)*nCh + (i)*Buoc;
 				int gr = ptrKO[index];
 
 				int i1 = cpKN.y + k;
 				int j1 = cpKN.x + h;
-				if ((i1 >= 0) && (i1<imgKN->height) && (j1 >= 0) && (j1<imgKN->width))
+				if ((i1 >= 0) && (i1<img_evaluate->height) && (j1 >= 0) && (j1<img_evaluate->width))
 				{
 					index = (j1)*nCh + (i1)*Buoc;
 					int gr1 = ptrKN[index];
@@ -1329,55 +1355,17 @@ int CmyipcamDlg::cs_resFind()
 #ifdef TEST_MODE
 	cvShowImage("AnhTru", imgTM);
 #endif
-	TV10.x = cpKN.x + TV10_LechX;
-	TV10.y = cpKN.y + TV10_LechY;
+	cs_TV10.x = cpKN.x + cs_TV10_LechX;
+	cs_TV10.y = cpKN.y + cs_TV10_LechY;
 
-	if (conFindV(imgTM, &c, &c1, &c2, &c3, &c4, &c5) == 1)
+	if (cs_conFindVD(imgTM, cs_contourVD) == 1)
 	{
-		if (getCheckValue(hDlg, IDC_AutoDetect) == 1)
-		{
-			if (SoPhatBanThuc<SoPhatBan)
-			{
-				return -1;
-			}
-		}
+		
 		// Tim vet DAM va tinh TRUNG BINH
-		//double TongX, TongY;
-		//TongX = 0; TongY = 0;
-		int SPB = SoPhatBanThuc;
-
-		if (SPB == 6)
+		int SPB = cs_SoPhatBanThuc;
+		for (int i = 0; i < cs_SoPhatBan; i++)
 		{
-			conCenterPoint(c5, &TVDNN[5]);
-			SPB = SPB - 1;
-		}
-		if (SPB == 5)
-		{
-			conCenterPoint(c4, &TVDNN[4]);
-			SPB = SPB - 1;
-		}
-		if (SPB == 4)
-		{
-			conCenterPoint(c3, &TVDNN[3]);
-			SPB = SPB - 1;
-		}
-		if (SPB == 3)
-		{
-			conCenterPoint(c2, &TVDNN[2]);
-			SPB = SPB - 1;
-		}
-		if (SPB == 2)
-		{
-			conCenterPoint(c1, &TVDNN[1]);
-			SPB = SPB - 1;
-			//float *radius;
-			//CvPoint2D32f *TVDN2D;
-			//cvMinEnclosingCircle(c1,TVDN2D,radius);
-		}
-		if (SPB == 1)
-		{
-			conCenterPoint(c, &TVDNN[0]);
-			SPB = SPB - 1;
+			conCenterPoint(cs_contourVD[i], &cs_TVDNN[i]);
 		}
 		return 1;
 	}
@@ -1386,4 +1374,91 @@ int CmyipcamDlg::cs_resFind()
 		return -1;
 	}
 }
-*/
+
+int CmyipcamDlg::cs_conFindBia(IplImage *img, CvSeq **mlgc)
+{
+	int Nc = 0;
+	CvMemStorage* storage;
+	//cvReleaseMemStorage(&storage);
+	storage = cvCreateMemStorage();
+
+	CvSeq *first_contour = NULL;
+	CvSeq *f1;
+
+	Nc = cvFindContours(img, storage, &first_contour, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+	if (Nc>0)
+	{
+		for (f1 = first_contour; f1 != NULL; f1 = f1->h_next)
+		{
+			if ((f1->total>cs_con_len_min) && (f1->total<cs_con_len_max))
+			{
+				*mlgc = f1;
+				break;
+			}
+		}
+		return 1;
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+int CmyipcamDlg::cs_conFindVD(IplImage *img, CvSeq *mlgc[])
+{
+	int Nc = 0, max_length = 0;
+	CvMemStorage* storage;
+	storage = cvCreateMemStorage();
+
+	CvSeq *first_contour = NULL;
+	CvSeq *f1;
+
+	int minL = (int)(cs_CoDan * cs_codan_min);
+	int maxL = (int)(cs_CoDan * cs_codan_max);
+
+	Nc = cvFindContours(img, storage, &first_contour, sizeof(CvContour), CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+	if (Nc>0)
+	{
+		cs_SoPhatBanThuc = 0;
+		if (cs_SoPhatBan == 1)  // Lay 1 vet to nhat
+		{
+			for (f1 = first_contour; f1 != NULL; f1 = f1->h_next)
+			{
+				if (max_length<f1->total)
+				{
+					max_length = f1->total;
+					mlgc[0] = f1;
+				}
+			}
+			if ((max_length>minL) && (max_length<maxL)) //
+			{
+				cs_SoPhatBanThuc = 1;
+				return 1;
+			}
+			else
+			{
+				return -1;
+			}
+		}
+		else  // Lay SoPhatDan vet dan
+		{
+			for (f1 = first_contour; f1 != NULL; f1 = f1->h_next)
+			{
+				if (cs_SoPhatBanThuc <cs_SoPhatBan)
+				{
+					if ((f1->total >minL) && (f1->total <maxL))
+					{
+						mlgc[cs_SoPhatBanThuc] = f1;
+						cs_SoPhatBanThuc = cs_SoPhatBanThuc + 1;
+						
+					}
+				}
+			}
+			return 1;
+		}
+	}
+	else
+	{
+		return -1;
+	}
+}
