@@ -687,7 +687,7 @@ void CmyipcamDlg::OnBnClickedButtonCsCfgSave()
 	// TODO: Add your control notification handler code here
 }
 
-/* capture the first image  */
+/* capture  image  */
 int CmyipcamDlg::captureImage(std::string strName, int scType, IplImage **img )
 {
 	if (scType == 2)	// ip cam
@@ -706,65 +706,6 @@ int CmyipcamDlg::captureImage(std::string strName, int scType, IplImage **img )
 		cvCopy(img_video_test, *img, 0);
 	}
 
-	return 0;
-}
-
-
-/* capture the first image  */
-int CmyipcamDlg::captureImage_F()
-{
-	// capture current image
-	std::string strName = "img_f.bmp";
-	if (cs_scType == 2)	// ip cam
-	{
-		if (HOEM_Play_SnapShot_BMP(0, (char*)strName.c_str(), strName.length()) == PLAY_SNAPSHOT_SUCCESS)
-		{
-			img_first = cvLoadImage("img_f.bmp", CV_LOAD_IMAGE_COLOR);
-		}
-	}
-	else if (cs_scType == 3) // test images
-	{
-		cvReleaseImage(&img_first);
-		img_first = cvCreateImage(cvGetSize(img_video_test),
-			img_video_test->depth,
-			img_video_test->nChannels);
-		cvCopy(img_video_test, img_first, 0);
-	}
-
-	
-#ifdef TEST_MODE
-	cvShowImage("First image", img_first);
-#endif // TEST_MODE
-
-	return 0;
-}
-
-/* capture image for evaltuation */
-int CmyipcamDlg::captureImage_E()
-{
-	// capture current image
-	std::string strName = "img_e.bmp";
-	if (cs_scType == 2)
-	{
-		if (HOEM_Play_SnapShot_BMP(0, (char*)strName.c_str(), strName.length()) == PLAY_SNAPSHOT_SUCCESS)
-		{
-			img_evaluate = cvLoadImage("img_e.bmp", CV_LOAD_IMAGE_COLOR);
-		}
-	}
-	else if (cs_scType == 3)
-	{
-		cvReleaseImage(&img_evaluate);
-		img_evaluate = cvCreateImage(cvGetSize(img_video_test),
-			img_video_test->depth,
-			img_video_test->nChannels);
-		cvCopy(img_video_test, img_evaluate, 0);
-	}
-	// push opencv frame into CStatic
-	::SetParent(m_HWND_opencv, GetDlgItem(IDC_STATIC_VIDEO)->m_hWnd);
-	// show image on opencv frame
-	cvShowImage("opencv_image_frame", img_evaluate);
-	
-	
 	return 0;
 }
 
@@ -797,24 +738,7 @@ int CmyipcamDlg::captureImage_C()
 	{
 
 	}
-	
 
-	return 0;
-}
-
-/* capture image for estimate width of target*/
-int CmyipcamDlg::captureImage_W()
-{
-	// capture current image
-	std::string strName = "img_w.bmp";
-	if (HOEM_Play_SnapShot_BMP(0, (char*)strName.c_str(), strName.length()) == PLAY_SNAPSHOT_SUCCESS)
-	{
-		img_widthDetect = cvLoadImage("img_w.bmp", CV_LOAD_IMAGE_COLOR);
-		// push opencv frame into CStatic
-		::SetParent(m_HWND_opencv, GetDlgItem(IDC_STATIC_VIDEO)->m_hWnd);
-		// show image on opencv frame
-		cvShowImage("opencv_image_frame", img_widthDetect);
-	}
 
 	return 0;
 }
@@ -1471,7 +1395,6 @@ int CmyipcamDlg::cs_resView()
 	int bk1 = 12, bk2 = 7;
 	// Xoa ket qua cu
 
-	//0. Copy anh imgN -> imgR
 
 	//2. Ve vet dan vua ban
 	double TongX = 0, TongY = 0;
@@ -1559,9 +1482,8 @@ int CmyipcamDlg::cs_resView()
 	//VeVetDanCu(hDlg);
 
 	//5. Phong to va hien thi len man hinh
-
-	cvShowImage("Video", img_evaluate);
-
+	//cvShowImage("Video", img_evaluate);
+	cvShowImage("opencv_image_frame", img_evaluate);
 	//6. Hien thi ket qua len text box
 /*	float doLechTAM = 0.0;
 	float doLechHNG = 0.0;
