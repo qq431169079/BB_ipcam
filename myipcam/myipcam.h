@@ -42,6 +42,8 @@ extern CmyipcamApp theApp;
 #define GRAY_LOW_LEVEL 0
 #define GRAY_HIGH_LEVEL 255
 
+#define MAX_SO_VIEN_DAN 6
+
 #define DETECT_NN 0
 
 #define CHUVI_DN  101

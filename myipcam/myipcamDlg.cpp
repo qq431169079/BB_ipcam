@@ -578,6 +578,10 @@ int CmyipcamDlg::readConfig()
 			fwscanf_s(myFile, L"%d%s", &cs_scType, &Text, sizeof(Text));
 			fwscanf_s(myFile, L"%d%s", &cs_IntevalTime, &Text, sizeof(Text));
 			fwscanf_s(myFile, L"%s", &cs_FileName, sizeof(cs_FileName));
+			fwscanf_s(myFile, L"%d%s", &cs_nguong_128, &Text, sizeof(Text));
+			fwscanf_s(myFile, L"%d%s", &cs_nguong_255, &Text, sizeof(Text));
+			fwscanf_s(myFile, L"%d%s", &cs_codan_max, &Text, sizeof(Text));
+			fwscanf_s(myFile, L"%d%s", &cs_codan_min, &Text, sizeof(Text));
 #ifdef TEST_MODE
 			OutputDebugString(_T("read line "));
 			OutputDebugString(Text);
@@ -623,6 +627,79 @@ int CmyipcamDlg::readConfig()
 	if (cs_saiso != 0) {
 		cs_saiso = 1000 + cs_saiso * (x % 1000);
 		MessageBox(_T("Chương trình chưa được đăng ký. Hãy gửi mã chương trình cho chúng tôi!"), _T("Warning"),
+			MB_ICONERROR | MB_OK);
+	}
+
+	return 0;
+}
+
+/* Save all new configuration to config file*/
+int CmyipcamDlg::saveConfig()
+{
+	FILE  *f;
+	WCHAR fullFileName[MAX_FILE_PATH];
+	BOOL  ut;
+	WCHAR txtValue[100];
+	CString str;
+	WCHAR currentDir[MAX_FILE_PATH];
+
+	m_CS_Width_mm.GetWindowText(str);
+	cs_DoRongBia_mm = _wtoi((LPCTSTR)str);
+	m_CS_Shoot_number.GetWindowText(str);
+	cs_SoPhatBan = _wtoi((LPCTSTR)str);
+	if (cs_SoPhatBan < 1) cs_SoPhatBan = 1;
+	if (cs_SoPhatBan > 6) cs_SoPhatBan = 6;
+	
+	cs_LoaiSung = m_CS_Gun_type.GetCurSel()+1;
+	if (cs_LoaiSung < 1) cs_LoaiSung = 1;
+	if (cs_LoaiSung > 18) cs_LoaiSung = 18;
+
+	if (cs_LoaiSung == 18)
+	{
+		cs_CoDan = 1.4;
+	}
+	else
+	{
+		cs_CoDan = 1.0;
+	}
+	GetCurrentDirectory(MAX_FILE_PATH, currentDir);
+	wsprintf(fullFileName, L"%s\\%s", currentDir, CONFIGFILE);
+	try
+	{
+		_wfopen_s(&f, fullFileName, L"wt+,ccs=UNICODE");
+		if (f != NULL)
+		{
+			fwprintf_s(f, L"%-20d %s\n", cs_TV10_LechX, L"Độ_lệch_tâm_X");
+			fwprintf_s(f, L"%-20d %s\n", cs_TV10_LechY, L"Độ_lệch_tâm_Y");
+			fwprintf_s(f, L"%-20d %s\n", cs_DoRongBia_mm, L"Độ_rộng_bia(mm)");
+			fwprintf_s(f, L"%-20d %s\n", cs_DoRongBia_ps, L"Độ_rộng_bia(pixel)");
+			fwprintf_s(f, L"%-20s %s\n", cs_active_code, L"Mã_kiểm_tra");
+			fwprintf_s(f, L"%-20d %s\n", cs_ContourLen, L"Chu_vi");
+			fwprintf_s(f, L"%-20d %s\n", cs_SoPhatBan, L"Số_phát_bắn");
+			fwprintf_s(f, L"%-20d %s\n", cs_LoaiSung, L"Loại_súng");
+			fwprintf_s(f, L"%-20d %s\n", cs_ThoiGian, L"T.gian_chỉnh_súng");
+			fwprintf_s(f, L"%-20d %s\n", cs_scType, L"Nguồn_ảnh_vào(2-Camera,3-Test)");
+			fwprintf_s(f, L"%-20d %s\n", cs_IntevalTime, L"T.gian_làm_tươi_ảnh");
+			fwprintf_s(f, L"%-20s\n", cs_FileName);
+			fwprintf_s(f, L"%-20d %s\n", cs_nguong_128, L"Nguong_128_ok");
+			fwprintf_s(f, L"%-20d %s\n", cs_nguong_255, L"Nguong_255");
+			fwprintf_s(f, L"%-20d %s\n", cs_codan_max, L"Co_dan_max");
+			fwprintf_s(f, L"%-20d %s\n", cs_codan_min, L"Co_dan_min");
+			fclose(f);
+		}
+		else
+		{
+#ifdef TEST_MODE
+			TRACE(_T("Can't open file %s\n"), fullFileName);
+			MessageBox(_T("Can't open file"), _T("Error"),
+				MB_ICONERROR | MB_OK);
+#endif // TEST_MODE
+		}
+	}
+	catch (const std::exception&)
+	{
+		TRACE(_T("File error %s\n"), fullFileName);
+		MessageBox(_T("Can't open file"), _T("Error"),
 			MB_ICONERROR | MB_OK);
 	}
 
@@ -684,7 +761,8 @@ void CmyipcamDlg::OnBnClickedButtonCsCfgCancel()
 
 void CmyipcamDlg::OnBnClickedButtonCsCfgSave()
 {
-	// TODO: Add your control notification handler code here
+	// Save all new parameter to config file
+	saveConfig();
 }
 
 /* capture  image  */
@@ -751,18 +829,20 @@ void CmyipcamDlg::Interact_opencv(int event, int x, int y, int flags, void* para
 	if (dlg->cs_mode == 0) {
 		if (event == CV_EVENT_LBUTTONDOWN)
 		{
-			cvCircle(dlg->img_evaluate, cvPoint(x, y), bk2, cvScalar(0, 0, 255), 3);
-			cvShowImage("opencv_image_frame", dlg->img_evaluate);		
-			
+			//cvCircle(dlg->img_evaluate, cvPoint(x, y), bk2, cvScalar(0, 0, 255), 3);
+			//cvShowImage("opencv_image_frame", dlg->img_evaluate);		
 		}
 		if (event == CV_EVENT_LBUTTONUP)
 		{
-
-
+			dlg->xm1 = x; dlg->ym1 = y;
+			dlg->cmd = KETQUA_ADD;
+			dlg->Ketqua_Exe();
 		}
-		if (event == CV_EVENT_MOUSEMOVE)
+		if (event == CV_EVENT_RBUTTONUP)
 		{
-
+			dlg->xm1 = x; dlg->ym1 = y;
+			dlg->cmd = KETQUA_DEL;
+			dlg->Ketqua_Exe();
 		}
 	}
 	/////////////// Detect center, width, peri of target ////////////////
@@ -825,6 +905,57 @@ void CmyipcamDlg::Interact_opencv(int event, int x, int y, int flags, void* para
 	}
 	
 
+}
+
+int CmyipcamDlg::Ketqua_Exe()
+{
+	if (cmd != DETECT_NN)
+	{
+		switch (cmd)
+		{
+		case KETQUA_ADD:
+			if (cs_SoPhatBanThuc < cs_SoPhatBan)
+			{
+				cs_TVDNN[cs_SoPhatBanThuc].x = (int)(xm1 / HesoZoom);
+				cs_TVDNN[cs_SoPhatBanThuc].y = (int)(ym1 / HesoZoom);
+				cs_SoPhatBanThuc = cs_SoPhatBanThuc + 1;
+				cs_resView();
+			}
+			break;
+		case KETQUA_DEL:
+			// Tinh Khoang cach tu diem chon den vet dan MOI
+			int i;
+			float kc;
+			int xoa[MAX_SO_VIEN_DAN];
+			for (i = 0; i < cs_SoPhatBanThuc; i++)
+			{
+				xoa[i] = 0;
+			}
+			for (i = 0; i < cs_SoPhatBanThuc; i++)
+			{
+				kc = sqrt((float)(xm1 - cs_TVDNN[i].x*HesoZoom)*(xm1 - cs_TVDNN[i].x*HesoZoom) + (float)(ym1 - cs_TVDNN[i].y*HesoZoom)*(ym1 - cs_TVDNN[i].y*HesoZoom));
+				if (kc < 6)
+				{
+					xoa[i] = 1;
+				}
+			}
+			int SPB = 0;
+			for (i = 0; i < cs_SoPhatBanThuc; i++)
+			{
+				if (xoa[i] == 0)
+				{
+					cs_TVDNN[SPB].x = cs_TVDNN[i].x;
+					cs_TVDNN[SPB].y = cs_TVDNN[i].y;
+					SPB = SPB + 1;
+				}
+			}
+			cs_SoPhatBanThuc = SPB;
+			cs_resView();
+			break;
+		}
+		cmd = DETECT_NN;
+	}
+	return 0;
 }
 
 void CmyipcamDlg::OnBnClickedButtonConfig()
@@ -1277,7 +1408,7 @@ int CmyipcamDlg::cs_resFind()
 	}
 	//cvSmooth( imgTM, imgTM, CV_MEDIAN,5,5);
 #ifdef TEST_MODE
-	cvShowImage("AnhTru", imgTM);
+	//cvShowImage("AnhTru", imgTM);
 #endif
 	
 	cs_TV10.x = cpKN.x + cs_TV10_LechX;
@@ -1395,7 +1526,11 @@ int CmyipcamDlg::cs_resView()
 	int bk1 = 12, bk2 = 7;
 	// Xoa ket qua cu
 
-
+	// 1. copy ảnh đánh giá để tính kết quả và hiệu chình bằng tay
+	img_evaluate_final = cvCreateImage(cvGetSize(img_evaluate),
+		img_evaluate->depth,
+		img_evaluate->nChannels);
+	cvCopy(img_evaluate, img_evaluate_final, 0);
 	//2. Ve vet dan vua ban
 	double TongX = 0, TongY = 0;
 	char ch[50];
@@ -1409,8 +1544,8 @@ int CmyipcamDlg::cs_resView()
 		sprintf_s(ch, 2, "%d", i + 1);
 		T1.x = (int)(cs_TVDNN[i].x*HesoZoom);
 		T1.y = (int)(cs_TVDNN[i].y*HesoZoom);
-		cvCircle(img_evaluate, T1, bk2, cvScalar(0, 0, 255), 3);
-		cvPutText(img_evaluate, ch, T1, &font, cvScalar(255));
+		cvCircle(img_evaluate_final, T1, bk2, cvScalar(0, 0, 255), 3);
+		cvPutText(img_evaluate_final, ch, T1, &font, cvScalar(255));
 	}
 	cs_TVDN.x = (int)(TongX / (cs_SoPhatBanThuc)+0.5);
 	cs_TVDN.y = (int)(TongY / (cs_SoPhatBanThuc)+0.5);
@@ -1434,12 +1569,12 @@ int CmyipcamDlg::cs_resView()
 		}
 
 		cvMinEnclosingCircle(points, &center, &cs_radius);
-		cvCircle(img_evaluate, cvPointFrom32f(center), cvRound(cs_radius), CV_RGB(0, 255, 0), 2, CV_AA, 0);
+		cvCircle(img_evaluate_final, cvPointFrom32f(center), cvRound(cs_radius), CV_RGB(0, 255, 0), 2, CV_AA, 0);
 
 		T1.x = 10;
 		T1.y = 50;
 		sprintf_s(ch, 40, "Duong kinh do chum: %0.1f cm", (cs_radius*cs_DoRongBia_mm) / (5 * cs_DoRongBia_ps));
-		cvPutText(img_evaluate, ch, T1, &font, cvScalar(255));
+		cvPutText(img_evaluate_final, ch, T1, &font, cvScalar(255));
 
 		cs_TVDN.x = (int)center.x;
 		cs_TVDN.y = (int)center.y;
@@ -1448,42 +1583,41 @@ int CmyipcamDlg::cs_resView()
 	//3.1 Ve len anh imgR
 
 	T1.x = (int)(cs_TV10.x*HesoZoom); T1.y = (int)(cs_TV10.y*HesoZoom); // Diem kiem tra
-	cvCircle(img_evaluate, T1, bk1, cvScalar(255, 255, 0), 3);
+	cvCircle(img_evaluate_final, T1, bk1, cvScalar(255, 255, 0), 3);
 
-	cvCircle(img_evaluate, T1, (cs_BKDoTrung[cs_LoaiSung] * cs_DoRongBia_ps) / cs_DoRongBia_mm, cvScalar(255, 255, 0), 1); // Ve Vong tron Do Trung
+	cvCircle(img_evaluate_final, T1, (cs_BKDoTrung[cs_LoaiSung] * cs_DoRongBia_ps) / cs_DoRongBia_mm, cvScalar(255, 255, 0), 1); // Ve Vong tron Do Trung
 
 
 	T1.x = (int)(cs_TVDN.x*HesoZoom); T1.y = (int)(cs_TVDN.y*HesoZoom); // Diem cham Trung BInh
-	cvCircle(img_evaluate, T1, bk1, cvScalar(0, 255, 0), 3);
+	cvCircle(img_evaluate_final, T1, bk1, cvScalar(0, 255, 0), 3);
 
 	T1.x = (int)(cs_TV10.x*HesoZoom); T1.y = (int)(cs_TV10.y*HesoZoom);
 	T2.x = (int)(cs_TVDN.x*HesoZoom); T2.y = (int)(cs_TVDN.y*HesoZoom);
-	cvLine(img_evaluate, T1, T2, cvScalar(0, 0, 255), 1);
+	cvLine(img_evaluate_final, T1, T2, cvScalar(0, 0, 255), 1);
 
 	T1.x = (int)(cs_TV10.x*HesoZoom); T1.y = (int)(cs_TVDN.y*HesoZoom);
 	T2.x = (int)(cs_TV10.x*HesoZoom); T2.y = (int)(cs_TV10.y*HesoZoom);
-	cvLine(img_evaluate, T2, T1, cvScalar(0, 0, 255), 1);
+	cvLine(img_evaluate_final, T2, T1, cvScalar(0, 0, 255), 1);
 
 	T2.x = (int)(cs_TVDN.x*HesoZoom); T2.y = (int)(cs_TV10.y*HesoZoom);
 	T1.x = (int)(cs_TV10.x*HesoZoom); T1.y = (int)(cs_TV10.y*HesoZoom);
-	cvLine(img_evaluate, T1, T2, cvScalar(0, 0, 255), 1);
+	cvLine(img_evaluate_final, T1, T2, cvScalar(0, 0, 255), 1);
 
 	T1.x = (int)(cs_TV10.x*HesoZoom); T1.y = (int)(cs_TVDN.y*HesoZoom);
 	T2.x = (int)(cs_TVDN.x*HesoZoom); T2.y = (int)(cs_TVDN.y*HesoZoom);
-	cvLine(img_evaluate, T2, T1, cvScalar(0, 0, 255), 1);
+	cvLine(img_evaluate_final, T2, T1, cvScalar(0, 0, 255), 1);
 
 	T2.x = (int)(cs_TVDN.x*HesoZoom); T2.y = (int)(cs_TV10.y*HesoZoom);
 	T1.x = (int)(cs_TVDN.x*HesoZoom); T1.y = (int)(cs_TVDN.y*HesoZoom);
-	cvLine(img_evaluate, T1, T2, cvScalar(0, 0, 255), 1);
+	cvLine(img_evaluate_final, T1, T2, cvScalar(0, 0, 255), 1);
 
 	
 	//4. Vet dan da ban
 
-	cs_VeVetDanCu(&img_evaluate);
+	cs_VeVetDanCu(&img_evaluate_final);
 
 	//5. Phong to va hien thi len man hinh
-	//cvShowImage("Video", img_evaluate);
-	cvShowImage("opencv_image_frame", img_evaluate);
+	cvShowImage("opencv_image_frame", img_evaluate_final);
 	//6. Hien thi ket qua len text box
 /*	float doLechTAM = 0.0;
 	float doLechHNG = 0.0;
