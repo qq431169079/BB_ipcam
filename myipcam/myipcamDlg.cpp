@@ -1479,7 +1479,7 @@ int CmyipcamDlg::cs_resView()
 	
 	//4. Vet dan da ban
 
-	//VeVetDanCu(hDlg);
+	cs_VeVetDanCu(&img_evaluate);
 
 	//5. Phong to va hien thi len man hinh
 	//cvShowImage("Video", img_evaluate);
@@ -1538,4 +1538,15 @@ void CmyipcamDlg::Set_BKDoTrung()
 	cs_BKDoTrung[16] = 70;								// K67
 	cs_BKDoTrung[17] = 70;								// ПKMC
 	cs_BKDoTrung[18] = 100;							// PK12ly7  - Không áp dụng
+}
+
+int CmyipcamDlg::cs_VeVetDanCu(IplImage **img)
+{
+	CvPoint p1;
+	for (int i = 0; i<cs_SoVetDan; i++)
+	{
+		p1.x = (int)(HesoZoom*cs_TVD[i].x); p1.y = (int)(HesoZoom*(cs_TVD[i].y));
+		cvCircle(*img, p1, 3, cvScalar(255, 255, 0), 2);
+	}
+	return 1;
 }
