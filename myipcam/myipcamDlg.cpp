@@ -28,13 +28,18 @@ void CmyipcamDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_CS_TAM_TEXT, m_CS_Tam_text);		
 	DDX_Control(pDX, IDC_EDIT_CS_HUONG_NUM, m_CS_Huong_num);	// Hiển thị kết quả lệch hướng
 	DDX_Control(pDX, IDC_EDIT_CS_HUONG_TEXT, m_CS_Huong_text);
+	DDX_Control(pDX, IDC_EDIT_CS_HCDN_NUM, m_CS_HCDN_num);
+	DDX_Control(pDX, IDC_EDIT_CS_HCDN_TEXT, m_CS_HCDN_text);
+	DDX_Control(pDX, IDC_EDIT_CS_HCB_NUM, m_CS_HCB_num);
+	DDX_Control(pDX, IDC_EDIT_CS_HCB_TEXT, m_CS_HCB_text);
 	DDX_Control(pDX, IDC_LIST_RESULT, m_CS_list_result);
+	DDX_Control(pDX, IDC_EDIT_CS_SERIAL, m_CS_serial);
 	// Main control group
 	DDX_Control(pDX, IDC_BUTTON_CS_START, m_CS_start);
 	DDX_Control(pDX, IDC_BUTTON_CS_EVALUATION, m_CS_evaluate);
 	DDX_Control(pDX, IDC_BUTTON_CS_SAVE, m_CS_save);
 	DDX_Control(pDX, IDC_BUTTON_CS_STOP, m_CS_stop);
-
+	DDX_Control(pDX, IDC_BUTTON_CONFIG, m_button_config);
 	// IP camera control group
 	DDX_Control(pDX, IDC_IPADDRESS_CAM, m_IP);
 	DDX_Control(pDX, IDC_EDIT_USER, m_User);
@@ -79,8 +84,8 @@ void CmyipcamDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BUTTON_CS_WIDTH, m_button_cs_width);
 	DDX_Control(pDX, IDC_BUTTON_CS_PERI, m_button_cs_peri);
 #endif // VERSION_2
-	DDX_Control(pDX, IDC_BUTTON_CS_CFG_SAVE, m_button_cs_save);
-	DDX_Control(pDX, IDC_BUTTON_CS_CFG_CANCEL, m_button_cs_cancel);
+	DDX_Control(pDX, IDC_BUTTON_CS_CFG_SAVE, m_button_cfg_save);
+	DDX_Control(pDX, IDC_BUTTON_CS_CFG_CANCEL, m_button_cfg_cancel);
 	DDX_Control(pDX, IDC_BUTTON_CS_TAGET_CLEAR, m_button_target_clear);
 	DDX_Control(pDX, IDC_STATIC_CFG, m_config_group);
 
@@ -114,6 +119,12 @@ BEGIN_MESSAGE_MAP(CmyipcamDlg, CDialogEx)
 #endif // VERSION_2
 	
 	ON_WM_TIMER()
+	ON_CBN_SELCHANGE(IDC_COMBO_GUN_TYPE, &CmyipcamDlg::OnCbnSelchangeComboGunType)
+	ON_EN_CHANGE(IDC_EDIT_SHOOT_NUMBER, &CmyipcamDlg::OnEnChangeEditShootNumber)
+	ON_BN_CLICKED(IDC_BUTTON_CS_SAVE, &CmyipcamDlg::OnBnClickedButtonCsSave)
+	ON_BN_CLICKED(IDC_BUTTON_CS_STOP, &CmyipcamDlg::OnBnClickedButtonCsStop)
+	ON_WM_CTLCOLOR()
+	ON_BN_CLICKED(IDC_BUTTON_CS_TAGET_CLEAR, &CmyipcamDlg::OnBnClickedButtonCsTagetClear)
 END_MESSAGE_MAP()
 
 
@@ -166,6 +177,8 @@ BOOL CmyipcamDlg::OnInitDialog()
 
 	// add gun type list
 	addGunList();
+	cs_SoVetDan = 0;
+	cs_SoLoatBan = 0;
 	// read configuration file
 	readConfig();
 
@@ -178,14 +191,25 @@ BOOL CmyipcamDlg::OnInitDialog()
 	cvSetMouseCallback("opencv_image_frame", Interact_opencv, this);
 
 	// invisible configuration interface
-	enableConfigGUI(0);
+	iState = STATE_INIT;
+	stateProgram(iState);
 
 	// Setup display of list of recent results
 	m_CS_list_result.SetWindowPos(NULL, 0, 0, 550, 330, SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER);
 	setupListResult();
 
 	cmd = DETECT_NN;
-	
+	// Đặt font chữ cho hiển thị kết quả
+	CFont *m_pFont_result = new CFont();
+	m_pFont_result->CreatePointFont(240, _T("Arial"));
+	m_CS_Tam_num.SetFont(m_pFont_result,1);
+	m_CS_Huong_num.SetFont(m_pFont_result, 1);
+	m_CS_Tam_text.SetFont(m_pFont_result, 1);
+	m_CS_Huong_text.SetFont(m_pFont_result, 1);
+	m_CS_HCDN_num.SetFont(m_pFont_result, 1);
+	m_CS_HCDN_text.SetFont(m_pFont_result, 1);
+	m_CS_HCB_num.SetFont(m_pFont_result, 1);
+	m_CS_HCB_text.SetFont(m_pFont_result, 1);
 	// Timer
 	CFont *m_pFont = new CFont();
 	m_pFont->CreatePointFont(300, _T("Arial"));
@@ -197,7 +221,26 @@ BOOL CmyipcamDlg::OnInitDialog()
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
+HBRUSH CmyipcamDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+	HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+	int id;
+	// TODO:  Change any attributes of the DC here
+	id = pWnd->GetDlgCtrlID();
+	if ((id == IDC_EDIT_CS_TAM_NUM)
+		| (id == IDC_EDIT_CS_HUONG_NUM)
+		| (id == IDC_EDIT_CS_TAM_TEXT)
+		| (id == IDC_EDIT_CS_HUONG_TEXT)
+		| (id == IDC_EDIT_CS_HCDN_TEXT)
+		| (id == IDC_EDIT_CS_HCDN_NUM)
+		| (id == IDC_EDIT_CS_HCB_TEXT)
+		| (id == IDC_EDIT_CS_HCB_NUM)
+		)
+		pDC->SetTextColor(RGB(0, 0, 250));
 
+	// TODO:  Return a different brush if the default is not desired
+	return hbr;
+}
 
 // If you add a minimize button to your dialog, you will need the code below
 //  to draw the icon.  For MFC applications using the document/view model,
@@ -283,8 +326,8 @@ void CmyipcamDlg::enableConfigGUI(int enable)
 		m_button_cs_width.ShowWindow(TRUE);
 		m_button_cs_peri.ShowWindow(TRUE);
 #endif // VERSION_2
-		m_button_cs_save.ShowWindow(TRUE);
-		m_button_cs_cancel.ShowWindow(TRUE);
+		m_button_cfg_save.ShowWindow(TRUE);
+		m_button_cfg_cancel.ShowWindow(TRUE);
 		m_button_target_clear.ShowWindow(TRUE);
 		m_config_group.ShowWindow(TRUE);
 		// Hide list of recent results
@@ -337,8 +380,8 @@ void CmyipcamDlg::enableConfigGUI(int enable)
 		m_button_cs_peri.ShowWindow(FALSE);
 #endif // VERSION_2
 		
-		m_button_cs_save.ShowWindow(FALSE);
-		m_button_cs_cancel.ShowWindow(FALSE);
+		m_button_cfg_save.ShowWindow(FALSE);
+		m_button_cfg_cancel.ShowWindow(FALSE);
 		m_button_target_clear.ShowWindow(FALSE);
 		m_config_group.ShowWindow(FALSE);
 		// Show list of recent results
@@ -350,15 +393,22 @@ void CmyipcamDlg::enableConfigGUI(int enable)
 /* Setup list for display the recent results*/
 void CmyipcamDlg::setupListResult()
 {
-	m_CS_list_result.InsertColumn(1, L"Số súng", LVCFMT_LEFT, 100);
-	m_CS_list_result.InsertColumn(2, L"Số đạn", LVCFMT_CENTER, 80);
-	m_CS_list_result.InsertColumn(3, L"Lệch tầm", LVCFMT_CENTER, 125);
-	m_CS_list_result.InsertColumn(4, L"Lệch hướng", LVCFMT_CENTER, 125);
+	m_CS_list_result.InsertColumn(0, L"Số súng", LVCFMT_LEFT, 100);
+	m_CS_list_result.InsertColumn(1, L"Số đạn", LVCFMT_CENTER, 80);
+	m_CS_list_result.InsertColumn(2, L"Lệch tầm", LVCFMT_CENTER, 125);
+	m_CS_list_result.InsertColumn(3, L"Lệch hướng", LVCFMT_CENTER, 125);
 	m_CS_list_result.InsertColumn(4, L"Độ chụm", LVCFMT_CENTER, 120);
 }
-void CmyipcamDlg::insertListResult()
+void CmyipcamDlg::insertListResult(int *index,CString sosung, int sodan, CString lechtam, CString lechhuong, float dochum)
 {
-
+	CString str;
+	*index = m_CS_list_result.InsertItem(0,sosung);
+	str.Format(_T("%d"), sodan);
+	m_CS_list_result.SetItemText(*index, 1, str);
+	m_CS_list_result.SetItemText(*index, 2, lechtam);
+	m_CS_list_result.SetItemText(*index, 3, lechhuong);
+	str.Format(_T("%.1f"), dochum);
+	m_CS_list_result.SetItemText(*index, 4, str);
 }
 /* Generate Active code for License*/
 DWORD CmyipcamDlg::ActiveCode(DWORD serialOfC)
@@ -763,6 +813,8 @@ void CmyipcamDlg::OnBnClickedButtonCsCfgSave()
 {
 	// Save all new parameter to config file
 	saveConfig();
+	iState = STATE_CONFIG_SAVED;
+	stateProgram(iState);
 }
 
 /* capture  image  */
@@ -963,11 +1015,13 @@ void CmyipcamDlg::OnBnClickedButtonConfig()
 	// TODO: Add your control notification handler code here
 	if (m_IP.IsWindowVisible())
 	{
-		enableConfigGUI(0);
+		iState = STATE_START_READY;
+		stateProgram(iState);
 	}
 	else
 	{
-		enableConfigGUI(1);
+		iState = STATE_CONFIGURING;
+		stateProgram(iState);
 	}
 	
 }
@@ -981,6 +1035,8 @@ void CmyipcamDlg::OnBnClickedButtonCsCenter()
 	// capture image and show on Cstatic
 	int iRes = captureImage_C();
 	cs_mode = 1;
+	iState = STATE_CONFIG_UNSAVE;
+	stateProgram(iState);
 }
 
 int CmyipcamDlg::Detect_LT_Exe()
@@ -1055,17 +1111,29 @@ void CmyipcamDlg::OnBnClickedButtonCsWidth()
 /* bắt đầu bắn*/
 void CmyipcamDlg::OnBnClickedButtonCsStart()
 {
-	::SetParent(m_HWND_video, GetDlgItem(IDC_STATIC_VIDEO)->m_hWnd);
-	cs_mode = -1; // mouse process
-	if (cs_scType == 2)	// ip cam
+	CString str;
+	m_CS_serial.GetWindowText(str);
+	if (str.IsEmpty())
 	{
-		HOEM_Play_Play(0);
-		SetTimer(TIMER_CAPTURE_FIRST_IMG, 100, 0); // wait for awhile then capture the first image 
+		MessageBox(_T("Chưa nhập số súng"), _T("Lỗi"),
+			MB_ICONERROR | MB_OK);
 	}
-	else if (cs_scType == 3) // test images
+	else
 	{
-		SetTimer(TIMER_VIDEO_TEST, 1000, 0); // for test video (sequence of sample images)
-		SetTimer(TIMER_CAPTURE_FIRST_IMG, 1100, 0); // wait for awhile then capture the first image 
+		//::SetParent(m_HWND_video, GetDlgItem(IDC_STATIC_VIDEO)->m_hWnd);
+		cs_mode = -1; // mouse process
+		if (cs_scType == 2)	// ip cam
+		{
+			HOEM_Play_Play(0);
+			SetTimer(TIMER_CAPTURE_FIRST_IMG, VIDEO_CAPTURE_DELAY, 0); // wait for awhile then capture the first image 
+		}
+		else if (cs_scType == 3) // test images
+		{
+			SetTimer(TIMER_VIDEO_TEST, TEST_VIDEO_DELAY, 0); // for test video (sequence of sample images)
+			SetTimer(TIMER_CAPTURE_FIRST_IMG, TEST_VIDEO_CAPTURE_DELAY, 0); // wait for awhile then capture the first image 
+		}
+		iState = STATE_STARTED;
+		stateProgram(iState);
 	}
 }
 
@@ -1084,6 +1152,8 @@ void CmyipcamDlg::OnBnClickedButtonCsEvaluation()
 	iKq = cs_resFind();
 	iRet = cs_resView();
 	cs_mode = 0;
+	iState = STATE_EVALUATED;
+	stateProgram(iState);
 }
 
 
@@ -1524,6 +1594,7 @@ int CmyipcamDlg::cs_resView()
 {
 	CvPoint T1, T2;
 	int bk1 = 12, bk2 = 7;
+	CString str;
 	// Xoa ket qua cu
 
 	// 1. copy ảnh đánh giá để tính kết quả và hiệu chình bằng tay
@@ -1574,7 +1645,7 @@ int CmyipcamDlg::cs_resView()
 		T1.x = 10;
 		T1.y = 50;
 		sprintf_s(ch, 40, "Duong kinh do chum: %0.1f cm", (cs_radius*cs_DoRongBia_mm) / (5 * cs_DoRongBia_ps));
-		cvPutText(img_evaluate_final, ch, T1, &font, cvScalar(255));
+		cvPutText(img_evaluate_final, ch, T1, &font, CV_RGB(255, 0, 0));
 
 		cs_TVDN.x = (int)center.x;
 		cs_TVDN.y = (int)center.y;
@@ -1619,35 +1690,38 @@ int CmyipcamDlg::cs_resView()
 	//5. Phong to va hien thi len man hinh
 	cvShowImage("opencv_image_frame", img_evaluate_final);
 	//6. Hien thi ket qua len text box
-/*	float doLechTAM = 0.0;
+	float doLechTAM = 0.0;
 	float doLechHNG = 0.0;
-	doLechTAM = DoLechTamMM(TVDN, TV10);
-	doLechHNG = DoLechHngMM(TVDN, TV10);
+	doLechTAM = cs_tinhDoLechTamMM(cs_TVDN, cs_TV10);
+	doLechHNG = cs_tinhDoLechHngMM(cs_TVDN, cs_TV10);
 	if (doLechTAM>0)
 	{
-		SetDlgItemText(hDlg, IDC_TAMTXT, L"CAO");
-		SetDlgItemText(hDlg, IDC_TAMTXT2, L"LÊN");
+		m_CS_Tam_text.SetWindowText(L"CAO");
+		m_CS_HCDN_text.SetWindowText(L"LÊN");
 	}
 	else
 	{
-		SetDlgItemText(hDlg, IDC_TAMTXT, L"THẤP");
-		SetDlgItemText(hDlg, IDC_TAMTXT2, L"XUỐNG");
+		m_CS_Tam_text.SetWindowText(L"THẤP");
+		m_CS_HCDN_text.SetWindowText(L"XUỐNG");
 	}
 	if (doLechHNG>0)
 	{
-		SetDlgItemText(hDlg, IDC_HUONGTXT, L"PHẢI");
-		SetDlgItemText(hDlg, IDC_HUONGTXT2, L"PHẢI");
+		m_CS_Huong_text.SetWindowText(L"PHẢI");
+		m_CS_HCB_text.SetWindowText(L"PHẢI");
 	}
 	else
 	{
-		SetDlgItemText(hDlg, IDC_HUONGTXT, L"TRÁI");
-		SetDlgItemText(hDlg, IDC_HUONGTXT2, L"TRÁI");
+		m_CS_Huong_text.SetWindowText(L"TRÁI");
+		m_CS_HCB_text.SetWindowText(L"TRÁI");
 	}
-	setFNumber(hDlg, IDC_TAMCM, abs(doLechTAM / 10));
-	setFNumber(hDlg, IDC_HUONGCM, abs(doLechHNG / 10));
-	setFNumber(hDlg, IDC_TAM, DoLechTamHC(abs(doLechTAM)));
-	setFNumber(hDlg, IDC_HUONG, DoLechHngHC(abs(doLechHNG)));
-*/
+	str.Format(_T("%.2f"), abs(doLechTAM / 10));
+	m_CS_Tam_num.SetWindowText(str);
+	str.Format(_T("%.2f"), abs(doLechHNG / 10));
+	m_CS_Huong_num.SetWindowText(str);
+	str.Format(_T("%.2f"), cs_tinhDoLechTamHC(abs(doLechTAM)));
+	m_CS_HCDN_num.SetWindowText(str);
+	str.Format(_T("%.2f"), cs_tinhDoLechHngHC(abs(doLechHNG)));
+	m_CS_HCB_num.SetWindowText(str);
 	return 0;
 }
 
@@ -1671,7 +1745,7 @@ void CmyipcamDlg::Set_BKDoTrung()
 	cs_BKDoTrung[15] = 70;								// CГ43, K53
 	cs_BKDoTrung[16] = 70;								// K67
 	cs_BKDoTrung[17] = 70;								// ПKMC
-	cs_BKDoTrung[18] = 100;							// PK12ly7  - Không áp dụng
+	cs_BKDoTrung[18] = 100;								// PK12ly7  - Không áp dụng
 }
 
 int CmyipcamDlg::cs_VeVetDanCu(IplImage **img)
@@ -1683,4 +1757,365 @@ int CmyipcamDlg::cs_VeVetDanCu(IplImage **img)
 		cvCircle(*img, p1, 3, cvScalar(255, 255, 0), 2);
 	}
 	return 1;
+}
+
+float CmyipcamDlg::cs_tinhDoLechTamMM(CvPoint TDan, CvPoint TBia) //Lech theo Y
+{
+	int DeltaY = -(TDan.y - TBia.y);
+	float kq;
+	kq = (float)(((DeltaY*cs_DoRongBia_mm) / cs_DoRongBia_ps) + cs_saiso);
+	return kq;
+}
+float CmyipcamDlg::cs_tinhDoLechHngMM(CvPoint TDan, CvPoint TBia) //Lech theo Y
+{
+	int DeltaX = (TDan.x - TBia.x);
+	float kq;
+	kq = (float)(((DeltaX*cs_DoRongBia_mm) / cs_DoRongBia_ps) + cs_saiso);
+	return kq;
+}
+float CmyipcamDlg::cs_tinhDoLechTamHC(float tam) //Lech theo Y
+{
+	float kq = 0;
+	if (cs_LoaiSung == 1) //K54  - Khong ap dung
+	{
+	}
+	if (cs_LoaiSung == 2) //K59
+	{
+		kq = (abs(tam) / 10) / 19;
+	}
+	if (cs_LoaiSung == 3) //K44  - Khong ap dung
+	{
+	}
+	if (cs_LoaiSung == 4) //VZ52/VZ58  - Khong ap dung
+	{
+	}
+	if (cs_LoaiSung == 5) //CKC
+	{
+		kq = (abs(tam) / 10) / 17;
+	}
+	if (cs_LoaiSung == 6) //K63
+	{
+		kq = (abs(tam) / 10) / 17;
+	}
+	if (cs_LoaiSung == 7) //K30    -   Khong ap dung
+	{
+	}
+	if (cs_LoaiSung == 8) //CBД
+	{
+		kq = (abs(tam) / 10) / 16;
+	}
+	if (cs_LoaiSung == 9) //AK
+	{
+		kq = (abs(tam) / 10) / 20;
+	}
+	if (cs_LoaiSung == 10) //VZ58
+	{
+		kq = (abs(tam) / 10) / 20;
+	}
+	if (cs_LoaiSung == 11) //PПД
+	{
+		kq = (abs(tam) / 10) / 17;
+	}
+	if (cs_LoaiSung == 12) //PПK
+	{
+		kq = (abs(tam) / 10) / 14;
+	}
+	if (cs_LoaiSung == 13) //ДП, ДПM, PП-46
+	{
+		kq = (abs(tam) / 10) / 10;
+	}
+	if (cs_LoaiSung == 14) //CГM, K57
+	{
+		kq = (abs(tam) / 10) / 12;
+	}
+	if (cs_LoaiSung == 15) //CГ43, K53
+	{
+		kq = (abs(tam) / 10) / 8;
+	}
+	if (cs_LoaiSung == 16) //K67
+	{
+		kq = (abs(tam) / 10) / 15;
+	}
+	if (cs_LoaiSung == 17) //ПKMC
+	{
+		kq = (abs(tam) / 10) / 12;
+	}
+	if (cs_LoaiSung == 18) //PK12ly7
+	{
+		kq = (abs(tam) / 10) / 12;
+	}
+	return kq;
+}
+float CmyipcamDlg::cs_tinhDoLechHngHC(float huong) //Lech theo Y
+{
+	float kq = 0;
+	if (cs_LoaiSung == 1) //K54  - Khong ap dung
+	{
+	}
+	if (cs_LoaiSung == 2) //K59
+	{
+		kq = (abs(huong) / 10) / 19;
+	}
+	if (cs_LoaiSung == 3) //K44
+	{
+		kq = (abs(huong) / 10) / 25;
+	}
+	if (cs_LoaiSung == 4) //VZ52/VZ58  - Khong ap dung
+	{
+		kq = (abs(huong) / 10) / 21;
+	}
+	if (cs_LoaiSung == 5) //CKC
+	{
+		kq = (abs(huong) / 10) / 21;
+	}
+	if (cs_LoaiSung == 6) //K63
+	{
+		kq = (abs(huong) / 10) / 21;
+	}
+	if (cs_LoaiSung == 7) //K30
+	{
+		kq = (abs(huong) / 10) / 16;
+	}
+	if (cs_LoaiSung == 8) //CBД
+	{
+		kq = (abs(huong) / 10) / 16;
+	}
+	if (cs_LoaiSung == 9) //AK
+	{
+		kq = (abs(huong) / 10) / 26;
+	}
+	if (cs_LoaiSung == 10) //VZ58
+	{
+		kq = (abs(huong) / 10) / 26;
+	}
+	if (cs_LoaiSung == 11) //PПД
+	{
+		kq = (abs(huong) / 10) / 17;
+	}
+	if (cs_LoaiSung == 12) //PПK
+	{
+		kq = (abs(huong) / 10) / 18;
+	}
+	if (cs_LoaiSung == 13) //ДП, ДПM, PП-46
+	{
+		kq = (abs(huong) / 10) / 16;
+	}
+	if (cs_LoaiSung == 14) //CГM, K57
+	{
+		kq = (abs(huong) / 10) / 12;
+	}
+	if (cs_LoaiSung == 15) //CГ43, K53
+	{
+		kq = (abs(huong) / 10) / 12;
+	}
+	if (cs_LoaiSung == 16) //K67
+	{
+		kq = (abs(huong) / 10) / 10;
+	}
+	if (cs_LoaiSung == 17) //ПKMC
+	{
+		kq = (abs(huong) / 10) / 10;
+	}
+	if (cs_LoaiSung == 18) //PK12ly7
+	{
+		kq = (abs(huong) / 10) / 15;
+	}
+	return kq;
+}
+
+void CmyipcamDlg::stateProgram(int state)
+{
+	switch (state) {
+	case STATE_INIT:
+		m_CS_start.EnableWindow(TRUE);
+		m_CS_evaluate.EnableWindow(FALSE);
+		m_CS_save.EnableWindow(FALSE);
+		m_CS_stop.EnableWindow(FALSE);
+		enableConfigGUI(0);
+		m_button_cfg_save.EnableWindow(FALSE);
+		m_button_config.EnableWindow(TRUE);
+		break;
+	case STATE_START_READY:
+		m_CS_start.EnableWindow(TRUE);
+		m_CS_evaluate.EnableWindow(FALSE);
+		m_CS_save.EnableWindow(FALSE);
+		m_CS_stop.EnableWindow(FALSE);
+		enableConfigGUI(0);
+		break;
+	case STATE_CONFIGURING:
+		m_CS_start.EnableWindow(FALSE);
+		m_CS_evaluate.EnableWindow(FALSE);
+		m_CS_save.EnableWindow(FALSE);
+		m_CS_stop.EnableWindow(FALSE);
+		enableConfigGUI(1);
+		break;
+	case STATE_CONFIG_UNSAVE:
+		m_button_cfg_save.EnableWindow(TRUE);
+		break;
+	case STATE_CONFIG_SAVED:
+		m_button_cfg_save.EnableWindow(FALSE);
+		break;
+	case STATE_STARTED:
+		m_CS_start.EnableWindow(FALSE );
+		m_CS_evaluate.EnableWindow(TRUE);
+		m_button_config.EnableWindow(FALSE);
+		m_CS_stop.EnableWindow(TRUE);
+		break;
+	case STATE_EVALUATED:
+		m_CS_evaluate.EnableWindow(FALSE);
+		m_CS_save.EnableWindow(TRUE);
+		break;
+	case STATE_RESULT_SAVED:
+		m_CS_evaluate.EnableWindow(TRUE);
+		m_CS_save.EnableWindow(FALSE);
+		break;
+	default:
+		break;
+	}	 
+}
+
+void CmyipcamDlg::OnCbnSelchangeComboGunType()
+{
+	iState = STATE_CONFIG_UNSAVE;
+	stateProgram(iState);
+}
+
+
+void CmyipcamDlg::OnEnChangeEditShootNumber()
+{
+	// TODO:  If this is a RICHEDIT control, the control will not
+	// send this notification unless you override the CDialogEx::OnInitDialog()
+	// function and call CRichEditCtrl().SetEventMask()
+	// with the ENM_CHANGE flag ORed into the mask.
+
+	// TODO:  Add your control notification handler code here
+	iState = STATE_CONFIG_UNSAVE;
+	stateProgram(iState);
+}
+
+
+void CmyipcamDlg::OnBnClickedButtonCsSave()
+{
+	// Save results 
+	saveResults();
+	// continue the video
+	cs_mode = -1; // mouse process
+	if (cs_scType == 2)	// ip cam
+	{
+		HOEM_Play_Play(0);
+		SetTimer(TIMER_CAPTURE_FIRST_IMG, VIDEO_CAPTURE_DELAY, 0); // wait for awhile then capture the first image 
+	}
+	else if (cs_scType == 3) // test images
+	{
+		SetTimer(TIMER_VIDEO_TEST, TEST_VIDEO_DELAY, 0); // for test video (sequence of sample images)
+		SetTimer(TIMER_CAPTURE_FIRST_IMG, TEST_VIDEO_CAPTURE_DELAY, 0); // wait for awhile then capture the first image 
+	}
+	iState = STATE_RESULT_SAVED;
+	stateProgram(iState);
+}
+
+
+void CmyipcamDlg::OnBnClickedButtonCsStop()
+{
+	// TODO: Add your control notification handler code here
+	// stop video
+	HOEM_Play_Pause(0);
+	KillTimer(TIMER_VIDEO_TEST);
+
+	iState = STATE_INIT;
+	stateProgram(iState);
+}
+
+void CmyipcamDlg::saveResults()
+{
+	//1. Luu vet dan vua ban thanh vet dan cu
+	for (int i = 0; i < cs_SoPhatBanThuc; i++)
+	{
+		cs_TVD[cs_SoVetDan].x = cs_TVDNN[i].x;
+		cs_TVD[cs_SoVetDan].y = cs_TVDNN[i].y;
+		cs_SoVetDan = cs_SoVetDan + 1;
+	}
+	//2. Ghi ket qua hien tai lai
+	time_t rawtime = time(0);
+	tm tm1 = tm();
+	if (rawtime != -1)
+	{
+		char  finameImg[100];
+		WCHAR finame[100];
+		CString sosung;
+		WCHAR thgian[20];
+		WCHAR fitype[20];
+		WCHAR finameKQ[100];
+		size_t i;
+		CString strlechtam;
+		CString strlechhuong;
+
+		m_CS_serial.GetWindowText(sosung);
+		localtime_s(&tm1, &rawtime);
+		wcsftime(thgian, 20, L"-%Y%m%d%H%M%S", &tm1);
+		wcscpy_s(fitype, 20, L".jpg");
+
+		//2.1 Ghi file anh
+		wcscpy_s(finame, 100, cs_FileName);
+		wcscat_s(finame, 100, sosung);
+		wcscat_s(finame, 100, thgian);
+		wcscat_s(finame, 100, fitype);
+		wcstombs_s(&i, finameImg, 100, finame, wcslen(finame));
+		cvSaveImage(finameImg, img_evaluate_final);
+		
+		//2.2 Ghi ra text file
+		float Tam, Huong;
+		float DoChum;
+		WCHAR TamTXT[10], HuongTXT[10];
+
+		FILE *f;
+		wcsftime(thgian, 20, L"KQ-%Y%m%d", &tm1);
+		wcscpy_s(fitype, 20, L".doc");
+		wcscpy_s(finameKQ, 100, cs_FileName);
+		wcscat_s(finameKQ, 100, thgian);
+		wcscat_s(finameKQ, 100, fitype);
+
+
+		Tam = cs_tinhDoLechTamMM(cs_TVDN, cs_TV10);
+		if (Tam > 0) { wcscpy_s(TamTXT, 10, L"CAO"); }
+		else { wcscpy_s(TamTXT, 10, L"THẤP"); }
+		Huong = cs_tinhDoLechHngMM(cs_TVDN, cs_TV10);
+		if (Huong > 0) { wcscpy_s(HuongTXT, 10, L"PHẢI"); }
+		else { wcscpy_s(HuongTXT, 10, L"TRÁI"); }
+
+		DoChum = (cs_radius*cs_DoRongBia_mm) / (5 * cs_DoRongBia_ps);
+		wcstombs_s(&i, finameImg, 100, finameKQ, wcslen(finameKQ));
+		if (_access(finameImg, 0) != -1)
+		{
+			_wfopen_s(&f, finameKQ, L"a, ccs=UTF-8");
+			if (f != NULL)
+			{
+				fwprintf(f, L"%-10s, %-6d, %-5s, %-6.2f, %-7s, %-6.2f, %-6.2f, %-100s\n", sosung, cs_SoPhatBanThuc, TamTXT, abs(Tam / 10), HuongTXT, abs(Huong / 10), DoChum, finame);
+				fclose(f);
+			}
+		}
+		else
+		{
+			_wfopen_s(&f, finameKQ, L"a, ccs=UTF-8");
+			if (f != NULL)
+			{
+				fwprintf(f, L"%-10s, %-6s, %-5s, %-6s,   %-7s, %-6s, , %-6s    %-100s\n", L"Số súng", L"Số đạn", L"L TẦM", L"ĐV(cm)", L"L HƯỚNG", L"ĐV(cm)", L"Đ.Chụm", L"Tên file ảnh kết quả");
+				fwprintf(f, L"%-10s, %-6d, %-5s, %-6.2f, %-7s, %-6.2f, %-6.2f, %-100s\n", sosung, cs_SoPhatBanThuc, TamTXT, abs(Tam / 10), HuongTXT, abs(Huong / 10), DoChum, finame);
+				fclose(f);
+			}
+		}
+		// 2.3 Ghi kết quả vào list
+		strlechtam.Format(_T("%.2f %s"), abs(Tam / 10), TamTXT);
+		strlechhuong.Format(_T("%.2f %s"), abs(Huong / 10), HuongTXT);
+		insertListResult(&cs_SoLoatBan, sosung, cs_SoPhatBanThuc,strlechtam, strlechhuong, DoChum);
+	}
+}
+
+void CmyipcamDlg::OnBnClickedButtonCsTagetClear()
+{
+	// TODO: Add your control notification handler code here
+	cs_SoVetDan = 0;
+	cs_SoLoatBan = 0;
+	m_CS_list_result.DeleteAllItems();
+	i_img_video_test_count = 1;
 }

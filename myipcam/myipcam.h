@@ -1,4 +1,4 @@
-
+﻿
 // myipcam.h : main header file for the PROJECT_NAME application
 //
 
@@ -70,3 +70,19 @@ extern CmyipcamApp theApp;
 #define TIMER_CLOCK 1
 #define TIMER_VIDEO_TEST 2
 #define TIMER_CAPTURE_FIRST_IMG 3
+
+// Các trạng thái (state) của chương trình
+#define STATE_INIT 0
+#define STATE_START_READY 1
+#define STATE_CONFIGURING 2
+#define STATE_CONFIG_UNSAVE 3
+#define STATE_CONFIG_SAVED 4
+#define STATE_STARTED 5
+#define STATE_EVALUATED 6
+#define STATE_RESULT_SAVED 7
+
+// For test video (sequence of images)
+#define TEST_VIDEO_DELAY 500
+#define TEST_VIDEO_CAPTURE_DELAY 550
+#define VIDEO_CAPTURE_DELAY 100
+
