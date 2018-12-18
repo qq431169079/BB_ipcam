@@ -38,7 +38,7 @@ extern CmyipcamApp theApp;
 
 //Khai bao dinh nghia 
 #define MAX_FILE_PATH 100
-#define CONFIGFILE L"cauhinh_unicode.txt"
+#define CONFIGFILE L"cauhinh.txt"
 #define GRAY_LOW_LEVEL 0
 #define GRAY_HIGH_LEVEL 255
 

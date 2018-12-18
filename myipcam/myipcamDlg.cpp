@@ -563,7 +563,7 @@ int CmyipcamDlg::readConfig()
 #endif // TEST_MODE
 	try
 	{
-		faccess_out = _wfopen_s(&myFile, fullFileName, L"rt+,ccs=UNICODE");
+		faccess_out = _wfopen_s(&myFile, fullFileName, L"rt+,ccs=UTF-8");
 		if (myFile != NULL)
 		{
 			fwscanf_s(myFile, L"%d%s", &cs_TV10_LechX, &Text,sizeof(Text));
@@ -666,15 +666,15 @@ int CmyipcamDlg::saveConfig()
 	wsprintf(fullFileName, L"%s\\%s", currentDir, CONFIGFILE);
 	try
 	{
-		_wfopen_s(&f, fullFileName, L"wt+,ccs=UNICODE");
+		_tfopen_s(&f, fullFileName, L"wt+,ccs=UTF-8");
 		if (f != NULL)
 		{
 			fwprintf_s(f, L"%-20d %s\n", cs_TV10_LechX, L"Độ_lệch_tâm_X");
 			fwprintf_s(f, L"%-20d %s\n", cs_TV10_LechY, L"Độ_lệch_tâm_Y");
 			fwprintf_s(f, L"%-20d %s\n", cs_DoRongBia_mm, L"Độ_rộng_bia(mm)");
 			fwprintf_s(f, L"%-20d %s\n", cs_DoRongBia_ps, L"Độ_rộng_bia(pixel)");
-			fwprintf_s(f, L"%-20s %s\n", cs_active_code, L"Mã_kiểm_tra");
-			fwprintf_s(f, L"%-20d %s\n", cs_ContourLen, L"Chu_vi");
+			fwprintf_s(f, L"%-20d %s\n", cs_active_code, L"Mã_kiểm_tra");
+			fwprintf_s(f, L"%-20d %s\n", cs_ContourLen, L"Chu_vi_bia");
 			fwprintf_s(f, L"%-20d %s\n", cs_SoPhatBan, L"Số_phát_bắn");
 			fwprintf_s(f, L"%-20d %s\n", cs_LoaiSung, L"Loại_súng");
 			fwprintf_s(f, L"%-20d %s\n", cs_ThoiGian, L"T.gian_chỉnh_súng");
