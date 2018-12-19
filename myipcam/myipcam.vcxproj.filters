@@ -56,7 +56,16 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\htcb.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\icon1.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
     <Image Include="res\myipcam.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\icon2.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

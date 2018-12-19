@@ -138,8 +138,10 @@ BOOL CmyipcamDlg::OnInitDialog()
 	//  when the application's main window is not a dialog
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
-
+	HICON hIcon = LoadIcon(AfxGetInstanceHandle(), MAKEINTRESOURCE(IDI_ICON1));
+	SetIcon(hIcon, FALSE);
 	// TODO: Add extra initialization here
+	
 	SetWindowPos(NULL, -1, -1, 1440, 850, SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER);
 	m_s.SetWindowPos(NULL, -1, -1, 800, 600, SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER);
 
@@ -183,12 +185,10 @@ BOOL CmyipcamDlg::OnInitDialog()
 	readConfig();
 
 	//Create OpenCV image frame
-	cvNamedWindow("opencv_image_frame", 0);
-	cvResizeWindow("opencv_image_frame", 800, 600);
-	m_HWND_opencv = (HWND)cvGetWindowHandle("opencv_image_frame");
-
-	//cvSetMouseCallback("opencv_image_frame", Interact_opencv, &cs_mode);
-	cvSetMouseCallback("opencv_image_frame", Interact_opencv, this);
+	//cvNamedWindow("opencv_image_frame", 0);
+	//cvResizeWindow("opencv_image_frame", 800, 600);
+	//m_HWND_opencv = (HWND)cvGetWindowHandle("opencv_image_frame");
+	//cvSetMouseCallback("opencv_image_frame", Interact_opencv, this);
 
 	// invisible configuration interface
 	iState = STATE_INIT;
@@ -269,6 +269,12 @@ void CmyipcamDlg::OnPaint()
 	{
 		CDialogEx::OnPaint();
 	}
+	//Create OpenCV image frame
+	cvNamedWindow("opencv_image_frame", 0);
+	cvResizeWindow("opencv_image_frame", 800, 600);
+	m_HWND_opencv = (HWND)cvGetWindowHandle("opencv_image_frame");
+	cvSetMouseCallback("opencv_image_frame", Interact_opencv, this);
+	CWnd::ShowWindow(SW_MAXIMIZE);
 }
 
 // The system calls this function to obtain the cursor to display while the user drags
@@ -600,6 +606,7 @@ int CmyipcamDlg::readConfig()
 {
 	int faccess_out;
 	int x;
+	CString str;
 	FILE *myFile;
 	WCHAR Text[100];
 	WCHAR fullFileName[MAX_FILE_PATH];
@@ -645,7 +652,8 @@ int CmyipcamDlg::readConfig()
 		{
 #ifdef TEST_MODE
 			TRACE(_T("Can't open file %s\n"), fullFileName);
-			MessageBox(_T("Can't open file"), _T("Error"),
+			str.Format(_T("Can't open config file %s"), fullFileName);
+			MessageBox(str, _T("Error"),
 				MB_ICONERROR | MB_OK);
 #endif // TEST_MODE
 		}
@@ -853,7 +861,7 @@ int CmyipcamDlg::captureImage_C()
 			if (cs_scType == 2)
 				img_centerDetect = cvLoadImage("img_c.bmp", CV_LOAD_IMAGE_COLOR);
 			else if (cs_scType == 3)
-				img_centerDetect = cvLoadImage("..\\Images\\Tag1.jpg", CV_LOAD_IMAGE_COLOR);
+				img_centerDetect = cvLoadImage(".\\Images\\Tag1.jpg", CV_LOAD_IMAGE_COLOR);
 
 			img_temp = cvCreateImage(cvGetSize(img_centerDetect),
 				img_centerDetect->depth,
@@ -862,6 +870,7 @@ int CmyipcamDlg::captureImage_C()
 			::SetParent(m_HWND_opencv, GetDlgItem(IDC_STATIC_VIDEO)->m_hWnd);
 			// show image on opencv frame
 			cvShowImage("opencv_image_frame", img_centerDetect);
+			//myShowImage(img_centerDetect);
 		}
 	}
 	catch (const std::exception&)
@@ -1329,7 +1338,7 @@ void CmyipcamDlg::OnTimer(UINT_PTR nIDEvent)
 		CString str;
 		if (i_img_video_test_count <= 10)
 		{
-			str.Format(_T("..\\Images\\Tag%d.jpg"), i_img_video_test_count);
+			str.Format(_T(".\\Images\\Tag%d.jpg"), i_img_video_test_count);
 			CT2A astr(str);
 			img_video_test = cvLoadImage(astr.m_psz, CV_LOAD_IMAGE_COLOR);
 			// show image on screen like a video frame
@@ -2046,6 +2055,7 @@ void CmyipcamDlg::saveResults()
 		WCHAR thgian[20];
 		WCHAR fitype[20];
 		WCHAR finameKQ[100];
+		CString fullfinameKQ;
 		size_t i;
 		CString strlechtam;
 		CString strlechhuong;
@@ -2056,7 +2066,8 @@ void CmyipcamDlg::saveResults()
 		wcscpy_s(fitype, 20, L".jpg");
 
 		//2.1 Ghi file anh
-		wcscpy_s(finame, 100, cs_FileName);
+		wcscpy_s(finame, 100, _T(".//HCS_KetQua//"));
+		wcscat_s(finame, 100, cs_FileName);
 		wcscat_s(finame, 100, sosung);
 		wcscat_s(finame, 100, thgian);
 		wcscat_s(finame, 100, fitype);
@@ -2085,9 +2096,10 @@ void CmyipcamDlg::saveResults()
 
 		DoChum = (cs_radius*cs_DoRongBia_mm) / (5 * cs_DoRongBia_ps);
 		wcstombs_s(&i, finameImg, 100, finameKQ, wcslen(finameKQ));
+		fullfinameKQ.Format(_T(".//HCS_KetQua//%s"), finameKQ);
 		if (_access(finameImg, 0) != -1)
 		{
-			_wfopen_s(&f, finameKQ, L"a, ccs=UTF-8");
+			_wfopen_s(&f, fullfinameKQ, L"a, ccs=UTF-8");
 			if (f != NULL)
 			{
 				fwprintf(f, L"%-10s, %-6d, %-5s, %-6.2f, %-7s, %-6.2f, %-6.2f, %-100s\n", sosung, cs_SoPhatBanThuc, TamTXT, abs(Tam / 10), HuongTXT, abs(Huong / 10), DoChum, finame);
@@ -2096,7 +2108,7 @@ void CmyipcamDlg::saveResults()
 		}
 		else
 		{
-			_wfopen_s(&f, finameKQ, L"a, ccs=UTF-8");
+			_wfopen_s(&f, fullfinameKQ, L"a, ccs=UTF-8");
 			if (f != NULL)
 			{
 				fwprintf(f, L"%-10s, %-6s, %-5s, %-6s,   %-7s, %-6s, , %-6s    %-100s\n", L"Số súng", L"Số đạn", L"L TẦM", L"ĐV(cm)", L"L HƯỚNG", L"ĐV(cm)", L"Đ.Chụm", L"Tên file ảnh kết quả");
@@ -2118,4 +2130,53 @@ void CmyipcamDlg::OnBnClickedButtonCsTagetClear()
 	cs_SoLoatBan = 0;
 	m_CS_list_result.DeleteAllItems();
 	i_img_video_test_count = 1;
+}
+
+void  CmyipcamDlg::DisplayIplImageToPictureBox(IplImage* pImgIpl, CDC* pDC, CRect rect)
+{
+	BITMAPINFO bitmapInfo;
+	bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bitmapInfo.bmiHeader.biPlanes = 1;
+	bitmapInfo.bmiHeader.biCompression = BI_RGB;
+	bitmapInfo.bmiHeader.biXPelsPerMeter = 100;
+	bitmapInfo.bmiHeader.biYPelsPerMeter = 100;
+	bitmapInfo.bmiHeader.biClrUsed = 0;
+	bitmapInfo.bmiHeader.biClrImportant = 0;
+	bitmapInfo.bmiHeader.biSizeImage = 0;
+	bitmapInfo.bmiHeader.biWidth = pImgIpl->width;
+	bitmapInfo.bmiHeader.biHeight = -pImgIpl->height;
+
+	IplImage* tempImage = NULL;
+
+	if (pImgIpl->nChannels == 3)
+	{
+		tempImage = (IplImage*)cvClone(pImgIpl);
+		bitmapInfo.bmiHeader.biBitCount = tempImage->depth * tempImage->nChannels;
+
+	}
+	else if (pImgIpl->nChannels == 1)
+	{
+		tempImage = cvCreateImage(cvGetSize(pImgIpl), IPL_DEPTH_8U, 3);
+		cvCvtColor(pImgIpl, tempImage, CV_GRAY2BGR);
+		bitmapInfo.bmiHeader.biBitCount = tempImage->depth * tempImage->nChannels;
+	}
+	if (tempImage != NULL)
+	{
+		pDC->SetStretchBltMode(COLORONCOLOR);
+		::StretchDIBits(pDC->GetSafeHdc(), rect.left, rect.top, rect.right, rect.bottom,
+			0, 0, tempImage->width, tempImage->height, tempImage->imageData, &bitmapInfo,
+			DIB_RGB_COLORS, SRCCOPY);
+
+		cvReleaseImage(&tempImage);
+	}
+}
+
+void CmyipcamDlg::myShowImage(IplImage* img)
+{
+	CDC* vDC;
+	vDC = m_s.GetDC(); //m_PicBox is PictureBox CStatic variable.
+	CRect rect;
+	m_s.GetClientRect(&rect);
+	DisplayIplImageToPictureBox(img, vDC, rect); //img is IplImage* variable.
+	ReleaseDC(vDC);
 }

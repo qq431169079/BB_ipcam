@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.168
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "myipcam", "myipcam\myipcam.vcxproj", "{EBD6EBA6-5B11-44E4-96CD-396EDBFECEDF}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "Setup_ipcam", "Setup_ipcam\Setup_ipcam.vdproj", "{4510C2E6-ED94-4F68-A686-9506C74DD9C3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,8 +23,16 @@ Global
 		{EBD6EBA6-5B11-44E4-96CD-396EDBFECEDF}.Release|x64.Build.0 = Release|x64
 		{EBD6EBA6-5B11-44E4-96CD-396EDBFECEDF}.Release|x86.ActiveCfg = Release|Win32
 		{EBD6EBA6-5B11-44E4-96CD-396EDBFECEDF}.Release|x86.Build.0 = Release|Win32
+		{4510C2E6-ED94-4F68-A686-9506C74DD9C3}.Debug|x64.ActiveCfg = Debug
+		{4510C2E6-ED94-4F68-A686-9506C74DD9C3}.Debug|x86.ActiveCfg = Debug
+		{4510C2E6-ED94-4F68-A686-9506C74DD9C3}.Release|x64.ActiveCfg = Release
+		{4510C2E6-ED94-4F68-A686-9506C74DD9C3}.Release|x86.ActiveCfg = Release
+		{4510C2E6-ED94-4F68-A686-9506C74DD9C3}.Release|x86.Build.0 = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {69EC7E8F-8D9B-4851-81D6-1035D768DA97}
 	EndGlobalSection
 EndGlobal

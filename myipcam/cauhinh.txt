@@ -1,4 +1,4 @@
-﻿0                    Độ_lệch_tâm_X
+﻿-1                   Độ_lệch_tâm_X
 3                    Độ_lệch_tâm_Y
 500                  Độ_rộng_bia(mm)
 496                  Độ_rộng_bia(pixel)
