@@ -444,6 +444,7 @@ DWORD CmyipcamDlg::GetSerialDiskC()
 		fileSystemName,
 		ARRAYSIZE(fileSystemName)))
 	{
+
 	}
 	else
 	{
