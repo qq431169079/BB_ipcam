@@ -861,7 +861,7 @@ int CmyipcamDlg::captureImage_C()
 			if (cs_scType == 2)
 				img_centerDetect = cvLoadImage("img_c.bmp", CV_LOAD_IMAGE_COLOR);
 			else if (cs_scType == 3)
-				img_centerDetect = cvLoadImage(".\\Images\\Tag1.jpg", CV_LOAD_IMAGE_COLOR);
+				img_centerDetect = cvLoadImage(".\\Images\\Dan1.jpg", CV_LOAD_IMAGE_COLOR);
 
 			img_temp = cvCreateImage(cvGetSize(img_centerDetect),
 				img_centerDetect->depth,
@@ -1339,7 +1339,7 @@ void CmyipcamDlg::OnTimer(UINT_PTR nIDEvent)
 		CString str;
 		if (i_img_video_test_count <= 10)
 		{
-			str.Format(_T(".\\Images\\Tag%d.jpg"), i_img_video_test_count);
+			str.Format(_T(".\\Images\\Dan%d.jpg"), i_img_video_test_count);
 			CT2A astr(str);
 			img_video_test = cvLoadImage(astr.m_psz, CV_LOAD_IMAGE_COLOR);
 			// show image on screen like a video frame

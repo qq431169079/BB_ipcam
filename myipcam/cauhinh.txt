@@ -1,9 +1,9 @@
-﻿-1                   Độ_lệch_tâm_X
-3                    Độ_lệch_tâm_Y
+﻿4                    Độ_lệch_tâm_X
+-1                   Độ_lệch_tâm_Y
 500                  Độ_rộng_bia(mm)
-496                  Độ_rộng_bia(pixel)
+534                  Độ_rộng_bia(pixel)
 455749035            Mã_kiểm_tra
-2017                 Chu_vi_bia
+2167                 Chu_vi_bia
 3                    Số_phát_bắn
 9                    Loại_súng
 0                    T.gian_chỉnh_súng

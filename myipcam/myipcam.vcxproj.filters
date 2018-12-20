@@ -35,13 +35,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="myipcam.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="myipcamDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="myipcam.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
