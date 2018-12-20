@@ -1138,6 +1138,7 @@ void CmyipcamDlg::OnBnClickedButtonCsStart()
 		}
 		else if (cs_scType == 3) // test images
 		{
+			HOEM_Play_Stop(0);
 			SetTimer(TIMER_VIDEO_TEST, TEST_VIDEO_DELAY, 0); // for test video (sequence of sample images)
 			SetTimer(TIMER_CAPTURE_FIRST_IMG, TEST_VIDEO_CAPTURE_DELAY, 0); // wait for awhile then capture the first image 
 		}
